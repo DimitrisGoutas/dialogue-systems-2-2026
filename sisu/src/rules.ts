@@ -155,6 +155,20 @@ export const rules: Rules = {
     }
   },
 
+  /** deals with no input */
+  integrate_usr_no_input: ({ is }) => {
+    if (is.shared.lu!.speaker === "usr") {
+      for (const move of is.shared.lu!.moves) {
+        if (move.type === "no_input") {
+          return () => ({
+            ...is,
+            next_moves: [...is.next_moves, { type: "not_heard", content: null }],
+          });
+        }
+      }
+    }
+  },
+
   /** TODO rule 2.7 integrate_usr_quit */
 
   /** TODO rule 2.8 integrate_sys_quit */

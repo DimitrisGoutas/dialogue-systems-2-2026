@@ -61,6 +61,8 @@ const nlgMapping: NLGMapping = [
   [{ type: "ask", content: WHQ("booking_course") }, "Which course?"],
   [{ type: "greet", content: null }, "Hello! You can ask me anything!"],
   [{ type: "not_understood", content: null}, "Sorry, I don't understand."],
+  [{ type: "not_heard", content: null}, "Sorry, I didn't hear what you said."],
+
   [
     {
       type: "answer",
@@ -101,5 +103,9 @@ export function nlg(moves: Move[]): string {
 /** NLU mapping function can be replaced by statistical NLU
  */
 export function nlu(utterance: string): Move[] {
+  if (utterance.trim() === "") {
+    /** when the user says nothing */
+    return [ { type: "no_input", content: null}];
+  }
   return nluMapping[utterance.toLowerCase()] || [];
 }
