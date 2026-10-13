@@ -156,4 +156,12 @@ describe("DME tests", () => {
       { speaker: "sys", message: "The lecture is in G212." },
     ]);
   });
+  
+  describe("The answer is not clear", () => {
+    runTest([
+      { speaker: "sys", message: "Hello! You can ask me anything!" },
+      { speaker: "usr", message: "bla bla bla" },
+      { speaker: "sys", message: "Sorry, I don't understand." },
+    ]);
+  });
 });
