@@ -140,6 +140,18 @@ export const rules: Rules = {
     }
   },
 
+  /** deals with answers that the system does not understand */
+  integrate_usr_not_understood: ({ is }) => {
+    if (is.shared.lu!.speaker === "usr") {
+      if (Array.isArray(is.shared.lu!.moves) && is.shared.lu!.moves.length === 0) {
+        return () => ({
+          ...is,
+          next_moves: [...is.next_moves, { type: "not_understood", content: null }],
+        });
+      }
+    }
+  },
+
   /** TODO rule 2.7 integrate_usr_quit */
 
   /** TODO rule 2.8 integrate_sys_quit */
