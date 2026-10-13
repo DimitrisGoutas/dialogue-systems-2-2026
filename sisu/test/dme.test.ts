@@ -194,4 +194,16 @@ describe("DME tests", () => {
       { speaker: "sys", message: "The lecture is in G212." },
     ]);
   });
+
+  describe("no input from user", () => {
+    runTest([
+      { speaker: "sys", message: "Hello! You can ask me anything!" },
+      { speaker: "usr", message: "" },
+      { speaker: "sys", message: "Sorry, I didn't hear what you said." },
+      { speaker: "usr", message: "Where is the lecture?" },
+      { speaker: "sys", message: "Which day?" },
+      { speaker: "usr", message: "" },
+      { speaker: "sys", message: "Sorry, I didn't hear what you said. Which day?" },
+    ]);
+  });
 });
