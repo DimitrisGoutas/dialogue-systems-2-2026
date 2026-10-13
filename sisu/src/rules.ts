@@ -69,13 +69,16 @@ export const rules: Rules = {
       for (const move of is.shared.lu!.moves) {
         if (move.type === "ask") {
           const q = move.content;
-          return () => ({
-            ...is,
-            shared: {
-              ...is.shared,
-              qud: [q, ...is.shared.qud],
-            },
-          });
+          // don't add the same question twice
+          if (!is.shared.qud.some((x) => objectsEqual(x, q))) {
+            return () => ({
+              ...is,
+              shared: {
+                ...is.shared,
+                qud: [q, ...is.shared.qud],
+              },
+            });
+          }
         }
       }
     }
