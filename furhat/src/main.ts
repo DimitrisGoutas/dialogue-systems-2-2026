@@ -34,6 +34,16 @@ async function fhAttend(lookAt: string){
   });
 }
 
+async function fhColor(red: number, green: number){
+  const myHeaders = new Headers();
+  myHeaders.append("accept", "application/json");
+  return fetch(`http://${FURHATURI}/furhat/led?red=${red}&green=${green}`, {
+    method: "POST",
+    headers: myHeaders,
+    body: "",
+  });
+}
+
 async function newGesture() {
   const myHeaders = new Headers();
   myHeaders.append("accept", "application/json");
@@ -115,6 +125,7 @@ const dmMachine = setup({
   states: {
     Start: { after: { 1000: "Look" } },
     Look: {
+      entry: () => fhColor(255, 0),
       invoke: {
         src: "fhLook",      
         input: null,
@@ -129,6 +140,7 @@ const dmMachine = setup({
       },
     },
     Next: {
+      entry: () => fhColor(255, 0),
       invoke: {
         src: "fhHello",      
         input: null,
@@ -143,6 +155,7 @@ const dmMachine = setup({
       },
     },
     Listen: {
+      entry: () => fhColor(0, 255),
       invoke: {
         src: "fhL",
         input: null,
@@ -160,6 +173,7 @@ const dmMachine = setup({
       },
     },
     Repeat: {
+      entry: () => fhColor(255, 0),
       invoke: {
         src: "fhSayAgain",
         input: ({context}) => context.userMessage,
