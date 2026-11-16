@@ -103,10 +103,14 @@ const dmMachine = setup({
     }),
     fhL: fromPromise<any, null>(async () => {
      return fhListen();
-   }),
+    }),
+    fhSayAgain: fromPromise<any, string>(async ({input}) => {
+      return fhSay(input)
+    }),
   },
 }).createMachine({
   id: "root",
+  context: {userMessage: ""}, 
   initial: "Start",
   states: {
     Start: { after: { 1000: "Look" } },
@@ -139,6 +143,34 @@ const dmMachine = setup({
       },
     },
     Listen: {
+      invoke: {
+        src: "fhL",
+        input: null,
+        onDone: {
+          target: "Repeat",
+          actions: [
+            ({ event }) => console.log(event.output),
+            assign({ userMessage: ({event}) => event.output}),
+          ],
+        },
+        onError: {
+          target: "Fail",
+          actions: ({ event }) => console.error(event),
+        },
+      },
+    },
+    Repeat: {
+      invoke: {
+        src: "fhSayAgain",
+        input: ({context}) => context.userMessage,
+        onDone: {
+          target: "Listen",
+        },
+        onError: {
+          target: "Fail",
+          actions: ({ event }) => console.error(event),
+        },
+      },
     },
     Fail: {},
   },
@@ -149,5 +181,6 @@ console.log(actor.getSnapshot().value);
 
 actor.subscribe((snapshot) => {
   console.log(snapshot.value);
+  console.log(snapshot.context);
 });
 
