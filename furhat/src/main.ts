@@ -24,6 +24,17 @@ async function fhSay(text: string) {
   });
 }
 
+async function fhEvilLaugh(audioUrl: string){  
+  const myHeaders = new Headers();
+  myHeaders.append("accept", "application/json");
+  const encUrl = encodeURIComponent(audioUrl);
+  return fetch(`http://${FURHATURI}/furhat/say?url=${encUrl}&lipsync=true&blocking=true`, {
+    method: "POST",
+    headers: myHeaders,
+    body: "",
+  });
+}
+
 async function fhAttend(lookAt: string){
   const myHeaders = new Headers();
   myHeaders.append("accept", "application/json");
@@ -63,6 +74,54 @@ async function newGesture() {
         },
         {
           time: [1.5],
+          persist: true,
+          params: {
+            reset: true,
+          },
+        },
+      ],
+      class: "furhatos.gestures.Gesture",
+    }),
+  });
+}
+
+async function fhEvilFace() {
+  const myHeaders = new Headers();
+  myHeaders.append("accept", "application/json");
+  return fetch(`http://${FURHATURI}/furhat/gesture?blocking=false`, {
+    method: "POST",
+    headers: myHeaders,
+    body: JSON.stringify({
+      name: "EvilFace",
+      frames: [
+        {
+          time: [0.4],
+          persist: true,
+          params: {
+            BROW_DOWN_LEFT: 1,
+            BROW_DOWN_RIGHT: 1,
+            EYE_SQUINT_LEFT: 0.7,
+            EYE_SQUINT_RIGHT: 0.7,
+            SMILE_OPEN: 0.6,
+            NECK_TILT: 10,
+          },
+        },
+        {
+          time: [0.6, 1.0, 1.4, 1.8],
+          persist: true,
+          params: {
+            PHONE_BIGAAH: 0.8,
+          },
+        },
+        {
+          time: [0.8, 1.2, 1.6, 2.0],
+          persist: true,
+          params: {
+            PHONE_BIGAAH: 0,
+          },
+        },
+        {
+          time: [2.4],
           persist: true,
           params: {
             reset: true,
@@ -182,7 +241,10 @@ const dmMachine = setup({
         input: ({context}) => context.userMessage,
         onDone: {
           target: "Listen",
-          actions: () => newGesture(),
+          actions: [
+            () => fhEvilFace(),
+            () => fhEvilLaugh("https://furhatlabgu.blob.core.windows.net/sounds/laugh16k.wav"),
+          ],
         },
         onError: {
           target: "Fail",
@@ -201,4 +263,3 @@ actor.subscribe((snapshot) => {
   console.log(snapshot.value);
   console.log(snapshot.context);
 });
-
