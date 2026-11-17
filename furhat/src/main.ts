@@ -54,20 +54,20 @@ async function newGesture() {
       name: "newGesture",
       frames: [
         {
-          time: [], //ADD THE TIME FRAME OF YOUR LIKING
+          time: [0.5],
           persist: true,
           params: {
-            //ADD PARAMETERS HERE IN ORDER TO CREATE A GESTURE
+            SMILE_OPEN: 1,
+            BLINK_LEFT: 1,
           },
         },
         {
-          time: [], //ADD TIME FRAME IN WHICH YOUR GESTURE RESETS
+          time: [1.5],
           persist: true,
           params: {
             reset: true,
           },
         },
-        //ADD MORE TIME FRAMES IF YOUR GESTURE REQUIRES THEM
       ],
       class: "furhatos.gestures.Gesture",
     }),
@@ -146,7 +146,10 @@ const dmMachine = setup({
         input: null,
         onDone: {
           target: "Listen",
-          actions: ({ event }) => console.log(event.output),
+          actions: [
+            ({ event }) => console.log(event.output),
+            () => newGesture(),
+          ],
         },
         onError: {
           target: "Fail",
@@ -163,7 +166,7 @@ const dmMachine = setup({
           target: "Repeat",
           actions: [
             ({ event }) => console.log(event.output),
-            assign({ userMessage: ({event}) => event.output}),
+            assign({ userMessage: ({ event }) => event.output }),
           ],
         },
         onError: {
@@ -179,6 +182,7 @@ const dmMachine = setup({
         input: ({context}) => context.userMessage,
         onDone: {
           target: "Listen",
+          actions: () => newGesture(),
         },
         onError: {
           target: "Fail",
