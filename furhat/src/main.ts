@@ -25,17 +25,6 @@ type Message = {
   content: string;
 };
 
-async function fhVoice(name: string) {
-  const myHeaders = new Headers();
-  myHeaders.append("accept", "application/json");
-  const encName = encodeURIComponent(name);
-  return fetch(`http://${FURHATURI}/furhat/voice?name=${encName}`, {
-    method: "POST",
-    headers: myHeaders,
-    body: "",
-  });
-}
-
 async function fhSay(text: string) {
   const myHeaders = new Headers();
   myHeaders.append("accept", "application/json");
@@ -47,18 +36,18 @@ async function fhSay(text: string) {
   });
 }
 
-async function fhEvilLaugh(audioUrl: string){  
+async function fhEvilLaugh(audioUrl: string) {
   const myHeaders = new Headers();
   myHeaders.append("accept", "application/json");
   const encUrl = encodeURIComponent(audioUrl);
-  return fetch(`http://${FURHATURI}/furhat/say?url=${encUrl}&lipsync=true&blocking=true`, {
+  return fetch(`http://${FURHATURI}/furhat/say?url=${encUrl}&lipsync=false&blocking=true`, {
     method: "POST",
     headers: myHeaders,
     body: "",
   });
 }
 
-async function fhAttend(lookAt: string){
+async function fhAttend(lookAt: string) {
   const myHeaders = new Headers();
   myHeaders.append("accept", "application/json");
   return fetch(`http://${FURHATURI}/furhat/attend?user=${lookAt}`, {
@@ -68,7 +57,7 @@ async function fhAttend(lookAt: string){
   });
 }
 
-async function fhColor(red: number, green: number){
+async function fhColor(red: number, green: number) {
   const myHeaders = new Headers();
   myHeaders.append("accept", "application/json");
   return fetch(`http://${FURHATURI}/furhat/led?red=${red}&green=${green}`, {
@@ -156,19 +145,6 @@ async function fhEvilFace() {
   });
 }
 
-async function fhGesture(text: string) {
-  const myHeaders = new Headers();
-  myHeaders.append("accept", "application/json");
-  return fetch(
-    `http://${FURHATURI}/furhat/gesture?name=${text}&blocking=true`,
-    {
-      method: "POST",
-      headers: myHeaders,
-      body: "",
-    },
-  );
-}
-
 async function fhListen() {
   const myHeaders = new Headers();
   myHeaders.append("accept", "application/json");
@@ -184,9 +160,6 @@ async function fhListen() {
 
 const dmMachine = setup({
   actors: {
-    fhVoice: fromPromise<any, null>(async () => {
-      return fhVoice("en-US-EchoMultilingualNeural");
-    }),
     fhHello: fromPromise<any, null>(async () => {
       return fhSay("Hey there!");
     }),
@@ -194,12 +167,12 @@ const dmMachine = setup({
       return fhAttend("CLOSEST")
     }),
     fhL: fromPromise<any, null>(async () => {
-     return fhListen();
+      return fhListen();
     }),
-    fhSayAgain: fromPromise<any, string>(async ({input}) => {
+    fhSayAgain: fromPromise<any, string>(async ({ input }) => {
       return fhSay(input)
     }),
-    Retrieval: fromPromise(async ({ input }: {input: string}): Promise<string> => {
+    Retrieval: fromPromise(async ({ input }: { input: string }): Promise<string> => {
       const embedding = await embed(input);
       // Retrieve the 5 most relevant chunks
       const results = await client.query("gu_student_support", {
@@ -213,7 +186,7 @@ const dmMachine = setup({
       // Combine the different retrieved chunks into one context
       return validTexts.join("\n\n");
     }),
-    ChatReply: fromPromise(async ({ input }: {input: { messages: Message[]; retrievedContext: string } }): Promise<string> => {
+    ChatReply: fromPromise(async ({ input }: { input: { messages: Message[]; retrievedContext: string } }): Promise<string> => {
       // Add the retrieved information to the LLM prompt
       const messagesWithContext: Message[] = [
         {
@@ -246,7 +219,7 @@ const dmMachine = setup({
     Look: {
       entry: () => fhColor(255, 0),
       invoke: {
-        src: "fhLook",      
+        src: "fhLook",
         input: null,
         onDone: {
           target: "Next",
@@ -261,7 +234,7 @@ const dmMachine = setup({
     Next: {
       entry: () => fhColor(255, 0),
       invoke: {
-        src: "fhHello",      
+        src: "fhHello",
         input: null,
         onDone: {
           target: "Listen",
@@ -312,7 +285,7 @@ const dmMachine = setup({
       invoke: {
         src: "fhSayAgain",
         input: "I don't hear anything. Could you say that again?",
-        onDone: { target: "Listen"},
+        onDone: { target: "Listen" },
         onError: {
           target: "Fail",
           actions: ({ event }) => console.error(event),
