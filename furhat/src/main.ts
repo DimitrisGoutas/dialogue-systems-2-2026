@@ -1,6 +1,29 @@
 import { setup, createActor, fromPromise, assign } from "xstate";
+import OpenAI from "openai";
+import { QdrantClient } from "@qdrant/js-client-rest";
 
 const FURHATURI = "127.0.0.1:54321";
+
+const openai = new OpenAI({
+  baseURL: "http://localhost:11434/v1/",
+  apiKey: "ollama",
+});
+
+const client = new QdrantClient({ host: "localhost", port: 6333 });
+
+const embed = async (input: string) =>
+  openai.embeddings
+    .create({
+      model: "qwen3-embedding",
+      input: input,
+      dimensions: 384,
+    })
+    .then((result) => result.data[0].embedding);
+
+type Message = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
 
 async function fhVoice(name: string) {
   const myHeaders = new Headers();
@@ -154,7 +177,7 @@ async function fhListen() {
     headers: myHeaders,
   })
     .then((response) => response.body)
-    .then((body) => body.getReader().read())
+    .then((body) => body!.getReader().read())
     .then((reader) => reader.value)
     .then((value) => JSON.parse(new TextDecoder().decode(value)).message);
 }
@@ -165,7 +188,7 @@ const dmMachine = setup({
       return fhVoice("en-US-EchoMultilingualNeural");
     }),
     fhHello: fromPromise<any, null>(async () => {
-      return fhSay("Hi");
+      return fhSay("Hey there!");
     }),
     fhLook: fromPromise<any, null>(async () => {
       return fhAttend("CLOSEST")
@@ -176,10 +199,47 @@ const dmMachine = setup({
     fhSayAgain: fromPromise<any, string>(async ({input}) => {
       return fhSay(input)
     }),
+    Retrieval: fromPromise(async ({ input }: {input: string}): Promise<string> => {
+      const embedding = await embed(input);
+      // Retrieve the 5 most relevant chunks
+      const results = await client.query("gu_student_support", {
+        with_payload: true,
+        query: embedding,
+        limit: 5,
+      });
+      // Get the text from the retrieved results
+      const texts = results.points.map((point) => point.payload?.text);
+      const validTexts = texts.filter((text) => text !== undefined);
+      // Combine the different retrieved chunks into one context
+      return validTexts.join("\n\n");
+    }),
+    ChatReply: fromPromise(async ({ input }: {input: { messages: Message[]; retrievedContext: string } }): Promise<string> => {
+      // Add the retrieved information to the LLM prompt
+      const messagesWithContext: Message[] = [
+        {
+          role: "system",
+          content: `Use the following retrieved GU information to answer the user:\n\n${input.retrievedContext}`,
+        },
+        ...input.messages,
+      ];
+      const completion = await openai.chat.completions.create({
+        model: "llama3.2:latest",
+        messages: messagesWithContext,
+      });
+      return completion.choices[0].message.content ?? "";
+    }),
   },
 }).createMachine({
   id: "root",
-  context: {userMessage: ""}, 
+  context: {
+    messages: [
+      {
+        role: "system",
+        content: "You are a helpful robot assistant for university of Gothenburg students. Keep your responses short and conversational, one or two sentences at most.",
+      },
+    ] as Message[],
+    retrievedContext: "",
+  },
   initial: "Start",
   states: {
     Start: { after: { 1000: "Look" } },
@@ -221,12 +281,56 @@ const dmMachine = setup({
       invoke: {
         src: "fhL",
         input: null,
+        onDone: [
+          {
+            // No input
+            guard: ({ event }) => !event.output || event.output === "SILENCE",
+            target: "NoInput",
+          },
+          {
+            // Save the user's utterance in the dialogue history
+            target: "Retrieval",
+            actions: [
+              ({ event }) => console.log(event.output),
+              assign({
+                messages: ({ context, event }) => [
+                  ...context.messages,
+                  { role: "user" as const, content: event.output },
+                ],
+              }),
+            ],
+          },
+        ],
+        onError: {
+          target: "Fail",
+          actions: ({ event }) => console.error(event),
+        },
+      },
+    },
+    NoInput: {
+      entry: () => fhColor(255, 0),
+      invoke: {
+        src: "fhSayAgain",
+        input: "I don't hear anything. Could you say that again?",
+        onDone: { target: "Listen"},
+        onError: {
+          target: "Fail",
+          actions: ({ event }) => console.error(event),
+        },
+      },
+    },
+    Retrieval: {
+      entry: () => fhColor(255, 0),
+      invoke: {
+        src: "Retrieval",
+        // Use the last two user messages as the search query
+        input: ({ context }) => {
+          const userMessages = context.messages.filter((m: Message) => m.role === "user");
+          return userMessages.slice(-2).map((m: Message) => m.content).join("\n");
+        },
         onDone: {
-          target: "Repeat",
-          actions: [
-            ({ event }) => console.log(event.output),
-            assign({ userMessage: ({ event }) => event.output }),
-          ],
+          target: "ChatCompletion",
+          actions: assign({ retrievedContext: ({ event }) => event.output }),
         },
         onError: {
           target: "Fail",
@@ -234,11 +338,36 @@ const dmMachine = setup({
         },
       },
     },
-    Repeat: {
+    ChatCompletion: {
+      entry: () => fhColor(255, 0),
+      invoke: {
+        src: "ChatReply",
+        input: ({ context }) => ({
+          messages: context.messages,
+          retrievedContext: context.retrievedContext,
+        }),
+        onDone: {
+          target: "Speaking",
+          // Add the LLM answer to the dialogue history
+          actions: assign({
+            messages: ({ context, event }) => [
+              ...context.messages,
+              { role: "assistant" as const, content: event.output },
+            ],
+          }),
+        },
+        onError: {
+          target: "Fail",
+          actions: ({ event }) => console.error(event),
+        },
+      },
+    },
+    Speaking: {
       entry: () => fhColor(255, 0),
       invoke: {
         src: "fhSayAgain",
-        input: ({context}) => context.userMessage,
+        // Say the last message, which is the LLM answer
+        input: ({ context }) => context.messages[context.messages.length - 1].content,
         onDone: {
           target: "Listen",
           actions: [
